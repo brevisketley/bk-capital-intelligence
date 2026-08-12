@@ -1,10 +1,4 @@
-"""Walk-forward yield-implied benchmark simulator.
-
-Selection at time t uses only information in the t observation. The next period's
-APY is used only for the simulated outcome. This is a research proxy, not realized
-PnL: it excludes token price moves, gas, slippage, depegs and other path-dependent
-cash-flow effects unless those are represented in the source series.
-"""
+"""Walk-forward yield-implied benchmark simulator."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,11 +29,16 @@ def _risk_proxy(point: dict[str, Any]) -> float:
 
 
 def _daily_growth(next_apy_percent: float) -> float:
-    """Convert annualized APY to a simple one-day yield-implied growth factor."""
     return 1.0 + max(-0.99, next_apy_percent / 100.0 / 365.0)
 
 
-def replay(pool_series: dict[str, list[dict[str, Any]]], top_k: int = 5) -> ReplayResult:
+def period_return_series(pool_series: dict[str, list[dict[str, Any]]], top_k: int = 5) -> tuple[list[float], list[float], list[float], int]:
+    """Return paired forward period returns for BK, highest-APY and equal-weight.
+
+    Selection uses only the earlier observation. The later observation is used only
+    for the simulated forward yield. Missing pool transitions are excluded and
+    counted in coverage rather than silently treated as profitable exits.
+    """
     if not pool_series:
         raise ValueError("pool_series cannot be empty")
     indexed: dict[str, dict[int, dict[str, Any]]] = {}
@@ -54,10 +53,9 @@ def replay(pool_series: dict[str, list[dict[str, Any]]], top_k: int = 5) -> Repl
     if len(ordered) < 2:
         raise ValueError("at least two observations are required")
 
-    values_bk = [1.0]
-    values_high = [1.0]
-    values_equal = [1.0]
-    observations = 0
+    bk_returns: list[float] = []
+    high_returns: list[float] = []
+    equal_returns: list[float] = []
     for ts, next_ts in zip(ordered, ordered[1:]):
         available = [(pool, indexed[pool][ts]) for pool in indexed if ts in indexed[pool] and next_ts in indexed[pool]]
         if not available:
@@ -70,20 +68,27 @@ def replay(pool_series: dict[str, list[dict[str, Any]]], top_k: int = 5) -> Repl
         )
         high = by_apy[:1]
         bk = by_adjusted[:max(1, top_k)]
-        equal = available  # true equal-weight baseline across the full eligible universe
         high_growth = _daily_growth(float(indexed[high[0][0]][next_ts].get("apy") or 0.0))
         bk_growth = sum(_daily_growth(float(indexed[pool][next_ts].get("apy") or 0.0)) for pool, _ in bk) / len(bk)
-        equal_growth = sum(_daily_growth(float(indexed[pool][next_ts].get("apy") or 0.0)) for pool, _ in equal) / len(equal)
-        values_high.append(values_high[-1] * high_growth)
-        values_bk.append(values_bk[-1] * bk_growth)
-        values_equal.append(values_equal[-1] * equal_growth)
-        observations += 1
+        equal_growth = sum(_daily_growth(float(indexed[pool][next_ts].get("apy") or 0.0)) for pool, _ in available) / len(available)
+        high_returns.append(high_growth - 1.0)
+        bk_returns.append(bk_growth - 1.0)
+        equal_returns.append(equal_growth - 1.0)
+    return bk_returns, high_returns, equal_returns, len(bk_returns)
 
+
+def replay(pool_series: dict[str, list[dict[str, Any]]], top_k: int = 5) -> ReplayResult:
+    bk_returns, high_returns, equal_returns, observations = period_return_series(pool_series, top_k)
     if observations == 0:
         raise ValueError("no overlapping consecutive observations")
+    def compound(returns: list[float]) -> list[float]:
+        values = [1.0]
+        for r in returns:
+            values.append(values[-1] * (1.0 + r))
+        return values
     return ReplayResult(
-        bk=evaluate(values_bk),
-        highest_apy=evaluate(values_high),
-        equal_weight=evaluate(values_equal),
+        bk=evaluate(compound(bk_returns)),
+        highest_apy=evaluate(compound(high_returns)),
+        equal_weight=evaluate(compound(equal_returns)),
         observations=observations,
     )
