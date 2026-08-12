@@ -1,8 +1,8 @@
 """Adversarial review layer for allocation decisions.
 
 The critic swarm deliberately attacks a proposed portfolio before the Guardian can
-approve it. It is deterministic in v0 so every objection is reproducible and testable.
-No critic has transaction authority.
+approve it. RiskAssessment.score is normalized to a 0-100 quality scale throughout
+the system; higher is safer. No critic has transaction authority.
 """
 from __future__ import annotations
 from dataclasses import dataclass
