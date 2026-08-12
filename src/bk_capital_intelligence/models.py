@@ -25,6 +25,7 @@ class Opportunity:
     chain_risk: float
     sustainability_risk: float
     updated_at: datetime
+    liquidity_risk: float = 0.50
     notes: Optional[str] = None
 
     @property
