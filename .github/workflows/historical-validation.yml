@@ -1,0 +1,27 @@
+name: historical-validation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 2 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run snapshot validation gate
+        run: PYTHONPATH=src python scripts/validate_snapshot_archive.py
+      - name: Commit validation report
+        run: |
+          git config user.name "BK Capital Intelligence Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/validation
+          git diff --cached --quiet || git commit -m "data: update validation gate report"
+          git push
