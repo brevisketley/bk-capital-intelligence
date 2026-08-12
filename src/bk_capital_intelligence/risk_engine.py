@@ -2,15 +2,15 @@ from .models import Opportunity, RiskAssessment
 
 
 WEIGHTS = {
-    "contract": 0.18,
-    "protocol": 0.14,
-    "asset": 0.12,
+    "contract": 0.17,
+    "protocol": 0.13,
+    "asset": 0.11,
     "oracle": 0.08,
     "governance": 0.07,
-    "counterparty": 0.12,
+    "counterparty": 0.11,
     "chain": 0.08,
     "sustainability": 0.13,
-    "liquidity": 0.08,
+    "liquidity": 0.12,
 }
 
 
@@ -42,12 +42,12 @@ def assess(opportunity: Opportunity) -> RiskAssessment:
         "counterparty": max(0.0, min(1.0, 1.0 - opportunity.counterparty_risk)),
         "chain": max(0.0, min(1.0, 1.0 - opportunity.chain_risk)),
         "sustainability": max(0.0, min(1.0, 1.0 - opportunity.sustainability_risk)),
-        "liquidity": opportunity.liquidity_ratio,
+        "liquidity": max(0.0, min(1.0, 1.0 - opportunity.liquidity_risk)),
     }
 
     score = 100.0 * sum(components[key] * weight for key, weight in WEIGHTS.items())
 
-    # Extreme-risk overrides prevent an attractive APY from masking unacceptable risk.
+    # Hard overrides prevent attractive yield from masking unacceptable risk.
     if opportunity.contract_risk >= 0.9:
         reasons.append("contract risk exceeds hard threshold")
         blocked = True
@@ -56,6 +56,9 @@ def assess(opportunity: Opportunity) -> RiskAssessment:
         blocked = True
     if opportunity.sustainability_risk >= 0.9:
         reasons.append("yield sustainability risk exceeds hard threshold")
+        blocked = True
+    if opportunity.liquidity_risk >= 0.9:
+        reasons.append("liquidity risk exceeds hard threshold")
         blocked = True
 
     return RiskAssessment(
@@ -71,7 +74,6 @@ def risk_adjusted_rank(opportunities: list[Opportunity]) -> list[tuple[Opportuni
     ranked = []
     for opportunity in opportunities:
         assessment = assess(opportunity)
-        # Yield contributes, but risk is a gating and multiplier layer rather than the sole objective.
         yield_factor = max(0.0, opportunity.net_apy)
         score = 0.0 if assessment.blocked else yield_factor * (assessment.score / 100.0)
         ranked.append((opportunity, assessment, round(score, 6)))
