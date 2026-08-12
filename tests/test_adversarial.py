@@ -18,7 +18,7 @@ def opportunity(**overrides):
 
 
 def risk(o, blocked=False):
-    return RiskAssessment(o.opportunity_id, .8 if not blocked else .2, blocked, (), {})
+    return RiskAssessment(o.opportunity_id, 80.0 if not blocked else 20.0, blocked, (), {})
 
 
 def test_adversarial_review_passes_clean_case():
