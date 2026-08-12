@@ -1,4 +1,4 @@
-"""Walk-forward yield-implied replay.
+"""Walk-forward yield-implied benchmark simulator.
 
 Selection at time t uses only information in the t observation. The next period's
 APY is used only for the simulated outcome. This is a research proxy, not realized
@@ -30,7 +30,6 @@ def _risk_proxy(point: dict[str, Any]) -> float:
     sustainability = min(1.0, 0.25 + reward_share * 0.65)
     if apy > 100.0:
         sustainability = max(sustainability, 0.85)
-    # Conservative proxy: 100 is best, 0 is blocked.
     score = 100.0 * (1.0 - (0.55 * tvl_risk + 0.45 * sustainability))
     return max(0.0, min(100.0, score))
 
@@ -71,8 +70,8 @@ def replay(pool_series: dict[str, list[dict[str, Any]]], top_k: int = 5) -> Repl
         )
         high = by_apy[:1]
         bk = by_adjusted[:max(1, top_k)]
-        equal = available[:max(1, top_k)]
-        high_growth = _daily_growth(float(high[0][1].get("apy") or 0.0))
+        equal = available  # true equal-weight baseline across the full eligible universe
+        high_growth = _daily_growth(float(indexed[high[0][0]][next_ts].get("apy") or 0.0))
         bk_growth = sum(_daily_growth(float(indexed[pool][next_ts].get("apy") or 0.0)) for pool, _ in bk) / len(bk)
         equal_growth = sum(_daily_growth(float(indexed[pool][next_ts].get("apy") or 0.0)) for pool, _ in equal) / len(equal)
         values_high.append(values_high[-1] * high_growth)
