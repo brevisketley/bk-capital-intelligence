@@ -17,11 +17,13 @@ jobs:
         with:
           python-version: "3.11"
       - name: Collect current yield universe
-        run: python scripts/collect_snapshot.py
-      - name: Commit snapshot
+        run: PYTHONPATH=src python scripts/collect_snapshot.py
+      - name: Update historical validation gate
+        run: PYTHONPATH=src python scripts/validate_snapshot_archive.py
+      - name: Commit snapshot and validation report
         run: |
           git config user.name "BK Capital Intelligence Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/snapshots
-          git diff --cached --quiet || git commit -m "data: collect yield snapshot"
+          git add data/snapshots data/validation
+          git diff --cached --quiet || git commit -m "data: collect yield snapshot and validation gate"
           git push
