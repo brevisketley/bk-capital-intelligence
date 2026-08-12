@@ -16,8 +16,8 @@ from .models import Opportunity, RiskAssessment
 @dataclass(frozen=True)
 class AgentFinding:
     agent: str
-    decision: str  # PASS / REVISE / VETO
-    severity: str  # INFO / WARNING / CRITICAL
+    decision: str
+    severity: str
     reasons: tuple[str, ...]
 
 
@@ -42,36 +42,26 @@ Agent = Callable[[list[Opportunity], list[RiskAssessment], dict[str, float]], Ag
 
 def _research(opps: list[Opportunity], risks: list[RiskAssessment], weights: dict[str, float]) -> AgentFinding:
     weak = [o.opportunity_id for o in opps if o.confidence < 0.60 and weights.get(o.opportunity_id, 0) > 0]
-    if weak:
-        return AgentFinding("research", "REVISE", "WARNING", (f"low source confidence: {','.join(weak[:5])}",))
-    return AgentFinding("research", "PASS", "INFO", ("source confidence acceptable",))
+    return AgentFinding("research", "REVISE", "WARNING", (f"low source confidence: {','.join(weak[:5])}",)) if weak else AgentFinding("research", "PASS", "INFO", ("source confidence acceptable",))
 
 
 def _risk(opps: list[Opportunity], risks: list[RiskAssessment], weights: dict[str, float]) -> AgentFinding:
     hard = [r.opportunity_id for r in risks if r.score >= 80 and weights.get(r.opportunity_id, 0) > 0]
-    if hard:
-        return AgentFinding("risk", "VETO", "CRITICAL", (f"high-risk allocated opportunities: {','.join(hard[:5])}",))
-    return AgentFinding("risk", "PASS", "INFO", ("no critical risk score breach",))
+    return AgentFinding("risk", "VETO", "CRITICAL", (f"high-risk allocated opportunities: {','.join(hard[:5])}",)) if hard else AgentFinding("risk", "PASS", "INFO", ("no critical risk score breach",))
 
 
 def _liquidity(opps: list[Opportunity], risks: list[RiskAssessment], weights: dict[str, float]) -> AgentFinding:
     concentrated = [k for k, w in weights.items() if w > 0.40]
-    if concentrated:
-        return AgentFinding("liquidity", "REVISE", "WARNING", (f"position concentration requires review: {','.join(concentrated[:5])}",))
-    return AgentFinding("liquidity", "PASS", "INFO", ("allocation concentration within review threshold",))
+    return AgentFinding("liquidity", "REVISE", "WARNING", (f"position concentration requires review: {','.join(concentrated[:5])}",)) if concentrated else AgentFinding("liquidity", "PASS", "INFO", ("allocation concentration within review threshold",))
 
 
 def _sustainability(opps: list[Opportunity], risks: list[RiskAssessment], weights: dict[str, float]) -> AgentFinding:
     suspicious = [o.opportunity_id for o in opps if o.gross_apy > 100 and (o.reward_apy or 0) > (o.base_apy or 0) and weights.get(o.opportunity_id, 0) > 0]
-    if suspicious:
-        return AgentFinding("sustainability", "REVISE", "WARNING", (f"incentive-dominant headline yield: {','.join(suspicious[:5])}",))
-    return AgentFinding("sustainability", "PASS", "INFO", ("no extreme incentive-dominant yield detected",))
+    return AgentFinding("sustainability", "REVISE", "WARNING", (f"incentive-dominant headline yield: {','.join(suspicious[:5])}",)) if suspicious else AgentFinding("sustainability", "PASS", "INFO", ("no extreme incentive-dominant yield detected",))
 
 
 def _red_team(opps: list[Opportunity], risks: list[RiskAssessment], weights: dict[str, float]) -> AgentFinding:
-    if not opps:
-        return AgentFinding("red_team", "VETO", "CRITICAL", ("empty opportunity universe",))
-    if sum(weights.values()) <= 0:
+    if not opps or sum(weights.values()) <= 0:
         return AgentFinding("red_team", "VETO", "CRITICAL", ("portfolio has no investable allocation",))
     return AgentFinding("red_team", "PASS", "INFO", ("no structural portfolio failure detected",))
 
@@ -80,10 +70,15 @@ DEFAULT_AGENTS: tuple[Agent, ...] = (_research, _risk, _liquidity, _sustainabili
 
 
 def _renormalize(weights: dict[str, float]) -> dict[str, float]:
-    total = sum(max(0.0, w) for w in weights.values())
+    cleaned = {k: max(0.0, w) for k, w in weights.items()}
+    total = sum(cleaned.values())
     if total <= 0:
-        return {k: 0.0 for k in weights}
-    return {k: max(0.0, w) / total for k, w in weights.items()}
+        return {k: 0.0 for k in cleaned}
+    # Portfolio constructors already return weights summing to one. Do not
+    # inflate a partial test/proposal allocation into 100% concentration.
+    if total <= 1.000001:
+        return cleaned
+    return {k: w / total for k, w in cleaned.items()}
 
 
 def _remediate(findings: tuple[AgentFinding, ...], opportunities: list[Opportunity], weights: dict[str, float]) -> dict[str, float]:
@@ -106,21 +101,8 @@ def _remediate(findings: tuple[AgentFinding, ...], opportunities: list[Opportuni
     return _renormalize(updated)
 
 
-def progressive_review(
-    opportunities: list[Opportunity],
-    risks: list[RiskAssessment],
-    weights: dict[str, float],
-    *,
-    agents: Iterable[Agent] = DEFAULT_AGENTS,
-    max_iterations: int = 3,
-) -> ProgressiveReview:
-    """Run specialist feedback, remediation and re-review until PASS/VETO.
-
-    VETO is fail-closed. REVISE is actionable feedback: the orchestrator applies a
-    deterministic remediation and runs the swarm again. The final weight set is
-    returned for the caller to feed into the Guardian, creating an auditable
-    progressive decision loop rather than a one-shot critic.
-    """
+def progressive_review(opportunities: list[Opportunity], risks: list[RiskAssessment], weights: dict[str, float], *, agents: Iterable[Agent] = DEFAULT_AGENTS, max_iterations: int = 3) -> ProgressiveReview:
+    """Run specialist feedback, remediation and re-review until PASS/VETO."""
     if max_iterations < 1:
         raise ValueError("max_iterations must be >= 1")
     history: list[SwarmIteration] = []
