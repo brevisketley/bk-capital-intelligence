@@ -1,0 +1,21 @@
+{
+  "project": "BK Capital Intelligence",
+  "version": "1.0",
+  "policy": "Only this dedicated repository and its dedicated deployment resources may be modified for this project.",
+  "agents": {
+    "A1_DATA": {"goal":"Live and point-in-time opportunity data","status":"active"},
+    "A2_YIELD": {"goal":"Net and comparable yield economics","status":"active"},
+    "A3_RISK": {"goal":"Deterministic risk scoring and vetoes","status":"green"},
+    "A4_PORTFOLIO": {"goal":"Constraint-safe allocation construction","status":"green"},
+    "A5_VALIDATION": {"goal":"Out-of-sample historical validation","status":"blocked_on_data_sufficiency"},
+    "A6_RED_TEAM": {"goal":"Adversarial attack and remediation","status":"green"},
+    "A7_RESEARCH": {"goal":"Evidence, provenance, freshness, conflicts","status":"active"},
+    "A8_GUARDIAN": {"goal":"Fail-closed policy gate","status":"green"},
+    "A9_FEEDBACK": {"goal":"Decision to outcome learning loop","status":"active"},
+    "A10_PRODUCT": {"goal":"Mission Control and user-facing product","status":"building"},
+    "A11_SECURITY": {"goal":"Production security and deployment gates","status":"active"}
+  },
+  "current_bottleneck": "Point-in-time data accumulation required for genuine OOS validation",
+  "safety": ["no user funds", "no custody", "no token", "no profit guarantees", "no autonomous execution before legal/security/risk gates"],
+  "completion_rule": "A gate is complete only when its acceptance criteria are verified; failures trigger remediation and retest."
+}
