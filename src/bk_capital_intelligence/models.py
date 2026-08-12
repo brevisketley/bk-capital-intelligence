@@ -26,6 +26,11 @@ class Opportunity:
     sustainability_risk: float
     updated_at: datetime
     liquidity_risk: float = 0.50
+    base_apy: Optional[float] = None
+    reward_apy: Optional[float] = None
+    source: str = "unknown"
+    source_url: Optional[str] = None
+    confidence: float = 0.0
     notes: Optional[str] = None
 
     @property
