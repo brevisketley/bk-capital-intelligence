@@ -35,7 +35,8 @@ def test_progressive_review_vetoes_critical_risk():
 
 def test_progressive_review_remediates_extreme_incentive_yield():
     result = progressive_review([opportunity(gross_apy=150.0, base_apy=10.0, reward_apy=140.0)], [risk()], {"p1": 0.2})
-    assert result.final_decision == "PASS"
+    assert result.final_decision == "VETO"
     assert len(result.iterations) == 2
     assert any(f.agent == "sustainability" and f.decision == "REVISE" for f in result.iterations[0].findings)
     assert dict(result.final_weights)["p1"] == 0.0
+    assert any(f.agent == "guardian" and f.decision == "VETO" for f in result.iterations[-1].findings)
