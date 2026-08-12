@@ -7,6 +7,7 @@ research proxy.
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from bk_capital_intelligence.replay import period_return_series
@@ -18,19 +19,20 @@ REPORTS = ROOT / "data" / "validation"
 
 
 def load_series() -> tuple[dict[str, list[dict]], int]:
-    files = sorted(SNAPSHOTS.glob("*/**.json"))
+    files = sorted(SNAPSHOTS.rglob("*.json"))
     series: dict[str, list[dict]] = {}
+    valid_files = 0
     for path in files:
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
+            ts = int(datetime.fromisoformat(str(document["observed_at"]).replace("Z", "+00:00")).timestamp())
         except Exception:
             continue
+        valid_files += 1
         for row in document.get("data", []):
             opportunity_id = row.get("opportunity_id")
             if not opportunity_id:
                 continue
-            # Snapshot timestamps are authoritative decision timestamps.
-            ts = int(path.stat().st_mtime)
             series.setdefault(opportunity_id, []).append({
                 "timestamp": ts,
                 "apy": float(row.get("gross_apy") or 0.0) * 100.0,
@@ -39,7 +41,7 @@ def load_series() -> tuple[dict[str, list[dict]], int]:
             })
     for points in series.values():
         points.sort(key=lambda p: p["timestamp"])
-    return series, len(files)
+    return series, valid_files
 
 
 def main() -> None:
