@@ -34,7 +34,8 @@ def _number(value: Any, default: float = 0.0) -> float:
 
 def _tvl(row: dict[str, Any]) -> float:
     """Support current DeFiLlama tvlUsd and older/fixture tvl naming."""
-    return _number(row.get("tvlUsd", row.get("tvl")))
+    value = row.get("tvlUsd")
+    return _number(value if value is not None else row.get("tvl"))
 
 
 def _risk_from_data(row: dict[str, Any]) -> dict[str, float]:
