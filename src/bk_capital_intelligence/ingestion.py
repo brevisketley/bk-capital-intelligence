@@ -32,9 +32,14 @@ def _number(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def _tvl(row: dict[str, Any]) -> float:
+    """Support current DeFiLlama tvlUsd and older/fixture tvl naming."""
+    return _number(row.get("tvlUsd", row.get("tvl")))
+
+
 def _risk_from_data(row: dict[str, Any]) -> dict[str, float]:
     """Create provisional source-derived risk inputs; unknowns remain cautious."""
-    tvl = _number(row.get("tvl"))
+    tvl = _tvl(row)
     apy = _number(row.get("apy"))
     reward_apy = _number(row.get("apyReward"))
     base_apy = _number(row.get("apyBase"))
@@ -44,7 +49,6 @@ def _risk_from_data(row: dict[str, Any]) -> dict[str, float]:
         sustainability = max(sustainability, 0.85)
     if base_apy <= 0 and reward_apy > 0:
         sustainability = max(sustainability, 0.90)
-    # These are not security audits. Missing evidence is deliberately not treated as safe.
     unknown = 0.60
     return {
         "contract": unknown, "protocol": unknown, "asset": 0.45,
@@ -61,6 +65,7 @@ def normalize_pool(row: dict[str, Any], observed_at: datetime | None = None) -> 
         raise IngestionError(f"pool missing required fields: {', '.join(missing)}")
     observed_at = observed_at or datetime.now(timezone.utc)
     risk = _risk_from_data(row)
+    tvl = _tvl(row)
     return Opportunity(
         opportunity_id=f"defillama:{row['pool']}",
         protocol=str(row["project"]),
@@ -69,15 +74,15 @@ def normalize_pool(row: dict[str, Any], observed_at: datetime | None = None) -> 
         asset=str(row["symbol"]),
         gross_apy=_number(row.get("apy")) / 100.0,
         fees_apy=0.0,
-        tvl_usd=_number(row.get("tvl")),
-        liquidity_usd=_number(row.get("tvl")),
+        tvl_usd=tvl,
+        liquidity_usd=tvl,
         lockup_days=0,
         leverage=1.0,
         contract_risk=risk["contract"], protocol_risk=risk["protocol"],
         asset_risk=risk["asset"], oracle_risk=risk["oracle"],
         governance_risk=risk["governance"], counterparty_risk=risk["counterparty"],
         chain_risk=risk["chain"], sustainability_risk=risk["sustainability"],
-        updated_at=observed_at,
+        liquidity_risk=risk["liquidity"], updated_at=observed_at,
         notes="DeFiLlama source; provisional risk inputs require enrichment before capital use.",
     )
 
