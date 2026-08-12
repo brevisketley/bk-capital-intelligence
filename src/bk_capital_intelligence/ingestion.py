@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 from .models import Opportunity
 
 DEFILLAMA_POOLS_URL = "https://yields.llama.fi/pools"
-USER_AGENT = "BK-Capital-Intelligence/0.1"
+USER_AGENT = "BK-Capital-Intelligence/0.2"
 
 class IngestionError(RuntimeError):
     """Raised when a source cannot be safely normalized."""
@@ -33,7 +33,6 @@ def _number(value: Any, default: float = 0.0) -> float:
 
 
 def _tvl(row: dict[str, Any]) -> float:
-    """Support current DeFiLlama tvlUsd and older/fixture tvl naming."""
     value = row.get("tvlUsd")
     return _number(value if value is not None else row.get("tvl"))
 
@@ -67,13 +66,16 @@ def normalize_pool(row: dict[str, Any], observed_at: datetime | None = None) -> 
     observed_at = observed_at or datetime.now(timezone.utc)
     risk = _risk_from_data(row)
     tvl = _tvl(row)
+    total_apy = _number(row.get("apy"))
+    base_apy = _number(row.get("apyBase"), default=total_apy)
+    reward_apy = _number(row.get("apyReward"))
     return Opportunity(
         opportunity_id=f"defillama:{row['pool']}",
         protocol=str(row["project"]),
         strategy=str(row.get("poolMeta") or "generic_yield"),
         chain=str(row["chain"]),
         asset=str(row["symbol"]),
-        gross_apy=_number(row.get("apy")) / 100.0,
+        gross_apy=total_apy / 100.0,
         fees_apy=0.0,
         tvl_usd=tvl,
         liquidity_usd=tvl,
@@ -84,7 +86,10 @@ def normalize_pool(row: dict[str, Any], observed_at: datetime | None = None) -> 
         governance_risk=risk["governance"], counterparty_risk=risk["counterparty"],
         chain_risk=risk["chain"], sustainability_risk=risk["sustainability"],
         liquidity_risk=risk["liquidity"], updated_at=observed_at,
-        notes="DeFiLlama source; provisional risk inputs require enrichment before capital use.",
+        base_apy=base_apy / 100.0, reward_apy=reward_apy / 100.0,
+        source="DeFiLlama", source_url=str(row.get("url")) if row.get("url") else None,
+        confidence=0.55,
+        notes="Discovery source only; protocol security/oracle/governance evidence must be enriched before capital use.",
     )
 
 
