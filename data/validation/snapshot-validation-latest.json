@@ -1,0 +1,5 @@
+{
+  "status": "INSUFFICIENT_DATA",
+  "snapshot_count": 1,
+  "message": "Need at least two snapshots to form a forward period."
+}
