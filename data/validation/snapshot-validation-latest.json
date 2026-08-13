@@ -1,10 +1,10 @@
 {
   "status": "INSUFFICIENT_DATA",
   "eligible": false,
-  "snapshot_count": 4,
-  "paired_periods": 3,
+  "snapshot_count": 5,
+  "paired_periods": 4,
   "metrics": {},
-  "message": "Need at least 12 paired out-of-sample periods; have 3.",
+  "message": "Need at least 12 paired out-of-sample periods; have 4.",
   "realized_pnl": false,
   "note": "APY-implied research proxy; token price, gas, slippage and depeg effects are not represented unless explicitly added to the dataset."
 }
