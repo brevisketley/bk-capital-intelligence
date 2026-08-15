@@ -1,10 +1,16 @@
 {
-  "status": "INSUFFICIENT_DATA",
+  "status": "FAIL",
   "eligible": false,
-  "snapshot_count": 12,
-  "paired_periods": 11,
-  "metrics": {},
-  "message": "Need at least 12 paired out-of-sample periods; have 11.",
+  "snapshot_count": 13,
+  "paired_periods": 12,
+  "metrics": {
+    "bk_mean_period_return": 0.00021762578995441576,
+    "apy_mean_period_return": 0.0003174223515981696,
+    "equal_mean_period_return": 7.071761753174588e-05,
+    "bk_excess_vs_apy": -9.979656164375386e-05,
+    "bk_excess_vs_equal": 0.00014690817242266988
+  },
+  "message": "BK does not beat both baselines on the supplied out-of-sample periods.",
   "realized_pnl": false,
   "note": "APY-implied research proxy; token price, gas, slippage and depeg effects are not represented unless explicitly added to the dataset."
 }
