@@ -1,14 +1,14 @@
 {
   "status": "FAIL",
   "eligible": false,
-  "snapshot_count": 21,
-  "paired_periods": 20,
+  "snapshot_count": 22,
+  "paired_periods": 21,
   "metrics": {
-    "bk_mean_period_return": 0.0002179585945206175,
-    "apy_mean_period_return": 0.00031732175342465976,
-    "equal_mean_period_return": 7.06885354754605e-05,
-    "bk_excess_vs_apy": -9.936315890404226e-05,
-    "bk_excess_vs_equal": 0.000147270059045157
+    "bk_mean_period_return": 0.0002179751676452124,
+    "apy_mean_period_return": 0.00031731098499674477,
+    "equal_mean_period_return": 7.069834311427112e-05,
+    "bk_excess_vs_apy": -9.933581735153236e-05,
+    "bk_excess_vs_equal": 0.0001472768245309413
   },
   "message": "BK does not beat both baselines on the supplied out-of-sample periods.",
   "realized_pnl": false,
