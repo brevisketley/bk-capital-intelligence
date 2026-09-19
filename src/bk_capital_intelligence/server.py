@@ -51,6 +51,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/":
             self._send(200, HTML.encode(), "text/html; charset=utf-8")
             return
+        if parsed.path == "/ready":
+            self._send(200, json.dumps({"status": "ready", "service": "bk-capital-intelligence", "database": "not-required"}).encode())
+            return
         if parsed.path == "/health":
             self._send(200, json.dumps({"status": "ok", "service": "bk-capital-intelligence"}).encode())
             return
